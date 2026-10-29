@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(uuid()) @db.Uuid
+  email        String         @unique
+  passwordHash String?        @map("password_hash")
+  displayName  String?        @map("display_name")
+  timezone     String         @default("Asia/Jakarta")
+  // Default location for weather lookup
+  latitude     Float?
+  longitude    Float?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  wardrobeItems WardrobeItem[]
+  outfitLogs    OutfitLog[]
+
+  @@map("users")
+}
+
+enum ItemCategory {
+  TOP
+  BOTTOM
+  OUTERWEAR
+  DRESS
+  FOOTWEAR
+  ACCESSORY
+}
+
+model WardrobeItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  category       ItemCategory
+  // Fine-grained type from auto-tagging, e.g. "t-shirt", "jacket", "trousers"
+  itemType       String       @map("item_type")
+  // Hex colors, most dominant first
+  colors         String[]
+  pattern        String?
+  styles         String[]     // e.g. ["casual", "streetwear"]
+  // 1 (very light) .. 5 (very warm), used for weather fit
+  warmthLevel    Int          @default(3) @map("warmth_level") @db.SmallInt
+  waterResistant Boolean      @default(false) @map("water_resistant")
+  imageUrl       String       @map("image_url")
+  maskedImageUrl String?      @map("masked_image_url")
+  // Point ID of this item's embedding in Qdrant
+  qdrantVectorId String?      @unique @map("qdrant_vector_id") @db.Uuid
+  // Raw ML tagger output, kept for reprocessing/debugging
+  mlMetadata     Json?        @map("ml_metadata")
+  // Rotation tracking (denormalized from OutfitLog for fast ranking)
+  wearCount      Int          @default(0) @map("wear_count")
+  lastWornAt     DateTime?    @map("last_worn_at")
+  archived       Boolean      @default(false)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  outfitLogs OutfitLogItem[]
+
+  @@index([userId, category])
+  @@index([userId, lastWornAt])
+  @@map("wardrobe_items")
+}
+
+model OutfitLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  wornOn      DateTime @map("worn_on") @db.Date
+  // Context snapshot at recommendation time
+  weather     Json?    // { tempC, precipMm, condition }
+  eventType   String?  @map("event_type") // e.g. "formal_meeting", "casual", "sport"
+  // Total score and per-criterion breakdown (StyleMatch, WeatherFit, CalendarFit, Rotation)
+  score       Float?
+  scoreDetail Json?    @map("score_detail")
+  // true if suggested by the engine, false if composed manually
+  recommended Boolean  @default(true)
+  rating      Int?     @db.SmallInt // optional user feedback 1..5
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items OutfitLogItem[]
+
+  @@index([userId, wornOn])
+  @@map("outfit_logs")
+}
+
+model OutfitLogItem {
+  outfitLogId    String @map("outfit_log_id") @db.Uuid
+  wardrobeItemId String @map("wardrobe_item_id") @db.Uuid
+
+  outfitLog    OutfitLog    @relation(fields: [outfitLogId], references: [id], onDelete: Cascade)
+  wardrobeItem WardrobeItem @relation(fields: [wardrobeItemId], references: [id], onDelete: Cascade)
+
+  @@id([outfitLogId, wardrobeItemId])
+  @@index([wardrobeItemId])
+  @@map("outfit_log_items")
+}

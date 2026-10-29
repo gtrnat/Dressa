@@ -1,0 +1,17 @@
+{
+  "name": "dressa",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dressa - Context-Aware Wardrobe & Dynamic Outfit Engine",
+  "workspaces": [
+    "services/api-gateway",
+    "packages/*"
+  ],
+  "scripts": {
+    "infra:up": "docker compose up -d postgres qdrant redis",
+    "infra:down": "docker compose down",
+    "dev:api": "npm run dev -w @dressa/api-gateway",
+    "db:migrate": "npm run db:migrate -w @dressa/api-gateway",
+    "db:generate": "npm run db:generate -w @dressa/api-gateway"
+  }
+}

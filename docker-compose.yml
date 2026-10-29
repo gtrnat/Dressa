@@ -1,0 +1,83 @@
+name: dressa
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dressa-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dressa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dressa}
+      POSTGRES_DB: ${POSTGRES_DB:-dressa}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dressa} -d ${POSTGRES_DB:-dressa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: dressa-qdrant
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"   # REST API + dashboard (/dashboard)
+      - "${QDRANT_GRPC_PORT:-6334}:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  redis:
+    image: redis:7-alpine
+    container_name: dressa-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Application services. Run with: docker compose --profile app up --build
+  ml-engine:
+    profiles: ["app"]
+    build: ./services/ml-engine
+    container_name: dressa-ml-engine
+    env_file: .env
+    environment:
+      QDRANT_URL: http://qdrant:6333
+    ports:
+      - "${ML_ENGINE_PORT:-8000}:8000"
+    depends_on:
+      - qdrant
+
+  api-gateway:
+    profiles: ["app"]
+    build: ./services/api-gateway
+    container_name: dressa-api-gateway
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-dressa}:${POSTGRES_PASSWORD:-dressa}@postgres:5432/${POSTGRES_DB:-dressa}?schema=public
+      REDIS_URL: redis://redis:6379
+      QDRANT_URL: http://qdrant:6333
+      ML_ENGINE_URL: http://ml-engine:8000
+    ports:
+      - "${API_GATEWAY_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ml-engine:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  redis_data:
