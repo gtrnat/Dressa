@@ -54,12 +54,16 @@ services:
       QDRANT_URL: http://qdrant:6333
     ports:
       - "${ML_ENGINE_PORT:-8000}:8000"
+    volumes:
+      - ml_models:/models   # CLIP weights cache, survives rebuilds
     depends_on:
       - qdrant
 
   api-gateway:
     profiles: ["app"]
-    build: ./services/api-gateway
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
     container_name: dressa-api-gateway
     env_file: .env
     environment:
@@ -69,6 +73,8 @@ services:
       ML_ENGINE_URL: http://ml-engine:8000
     ports:
       - "${API_GATEWAY_PORT:-3000}:3000"
+    volumes:
+      - uploads:/repo/services/api-gateway/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -81,3 +87,5 @@ volumes:
   postgres_data:
   qdrant_data:
   redis_data:
+  ml_models:
+  uploads:

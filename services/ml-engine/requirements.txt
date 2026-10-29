@@ -3,9 +3,13 @@ uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 pydantic>=2.7
 
-# Added when models are wired in (Phase 1, later step):
-# torch
-# open_clip_torch
-# ultralytics
-# onnxruntime
-# qdrant-client
+# CLIP ViT-B/32 image + text encoders via ONNX Runtime (no PyTorch needed)
+fastembed>=0.9,<1.0
+pillow>=11.0
+numpy>=2.0
+
+# Background removal (ONNX, CPU)
+rembg[cpu]>=2.0.60
+
+# Vector DB
+qdrant-client>=1.15,<2.0

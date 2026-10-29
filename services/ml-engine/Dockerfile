@@ -10,7 +10,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN useradd --create-home appuser
+ENV MODEL_CACHE_DIR=/models
+RUN useradd --create-home appuser \
+    && mkdir -p /models \
+    && chown appuser:appuser /models
 USER appuser
 
 EXPOSE 8000

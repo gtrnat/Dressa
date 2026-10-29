@@ -8,11 +8,46 @@ export type ItemCategory =
   | "FOOTWEAR"
   | "ACCESSORY";
 
+export interface ColorTag {
+  hex: string;
+  name: string;
+  /** Share of garment pixels, 0..1 */
+  ratio: number;
+}
+
+export interface LabelTag {
+  label: string;
+  /** Zero-shot probability, 0..1 */
+  confidence: number;
+}
+
+/** ml-engine POST /process-image -> tags */
 export interface ItemTags {
-  category: string;
-  dominant_colors: string[];
-  pattern: string;
-  style: string[];
+  category: ItemCategory;
+  item_type: LabelTag;
+  dominant_colors: ColorTag[];
+  pattern: LabelTag;
+  styles: LabelTag[];
+  /** summer/fall/winter/spring; only set when DressaNet is loaded */
+  season?: LabelTag | null;
+  warmth_level: number;
+  water_resistant: boolean;
+}
+
+/** ml-engine POST /process-image response */
+export interface ProcessImageResponse {
+  filename: string;
+  background_removed: boolean;
+  foreground_ratio: number | null;
+  cutout_png_base64: string;
+  cutout_width: number;
+  cutout_height: number;
+  tags: ItemTags;
+  /** Model that produced item_type/style/warmth */
+  attribute_model: "dressanet" | "clip-zero-shot";
+  /** How likely the cutout is a single garment (vs. people, scenes, objects), 0..1 */
+  garment_probability: number;
+  needs_review: boolean;
 }
 
 export interface ScoreBreakdown {
