@@ -8,6 +8,8 @@ import { prisma } from "./lib/prisma.js";
 import { devRoutes } from "./routes/dev.js";
 import { healthRoutes } from "./routes/health.js";
 import { itemRoutes } from "./routes/items.js";
+import { cache } from "./lib/redis.js";
+import { integrationRoutes, meRoutes, outfitRoutes, recommendationRoutes } from "./routes/phase2.js";
 
 const app = Fastify({ logger: true, bodyLimit: 1024 * 1024 });
 
@@ -25,6 +27,10 @@ await app.register(fastifyStatic, { root: config.uploadDir, prefix: "/uploads/",
 
 await app.register(healthRoutes);
 await app.register(itemRoutes);
+await app.register(meRoutes);
+await app.register(recommendationRoutes);
+await app.register(outfitRoutes);
+await app.register(integrationRoutes);
 if (config.devAuth) {
   app.log.warn("DEV_AUTH is on: X-User-Id header is trusted. Do not use in production.");
   await app.register(devRoutes);
@@ -32,7 +38,7 @@ if (config.devAuth) {
 
 const shutdown = async () => {
   await app.close();
-  await prisma.$disconnect();
+  await Promise.allSettled([prisma.$disconnect(), cache.close()]);
   process.exit(0);
 };
 process.on("SIGINT", shutdown);

@@ -137,7 +137,7 @@ class ZeroShotTagger:
     def tag(self, image_vector: list[float], item_type_hint: str | None = None) -> Tags:
         """image_vector: L2-normalized CLIP image embedding. Blocking; call from a thread.
 
-        item_type_hint: garment type from another model (DressaNet); used in the pattern/style
+        item_type_hint: garment type from the trained ML classifier; used in the pattern/style
         prompts ("a striped t-shirt") instead of CLIP's own item-type guess.
         """
         v = np.asarray(image_vector, dtype=np.float32)

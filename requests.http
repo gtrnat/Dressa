@@ -1,0 +1,142 @@
+### =====================================================================
+### Dressa API - kumpulan request untuk ekstensi REST Client
+###
+### Cara pakai:
+###   1. Pastikan api-gateway (npm run dev:api) dan ml-engine (uvicorn) sedang jalan.
+###   2. Klik tulisan "Send Request" yang muncul di atas setiap request.
+###   3. Hasilnya muncul di panel sebelah kanan.
+###
+### Jalankan berurutan dari atas: request "createUser" menyimpan id user,
+### lalu request lain memakainya otomatis lewat {{userId}}.
+### =====================================================================
+
+@base = http://localhost:3000
+@ml = http://localhost:8000
+@userId = {{createUser.response.body.$.id}}
+
+
+### 0. Cek server hidup
+GET {{base}}/health
+
+### 0b. Cek ml-engine (attribute_model "ml-classifier" kalau dressa_ml.joblib sudah dipasang)
+GET {{ml}}/health
+
+
+### 1. Buat user uji (kalau email sudah ada, user yang sama dikembalikan)
+# @name createUser
+POST {{base}}/dev/users
+Content-Type: application/json
+
+{
+  "email": "saya@dressa.test",
+  "displayName": "Saya"
+}
+
+
+### 2. Lihat profil
+GET {{base}}/me
+X-User-Id: {{userId}}
+
+### 3. Atur lokasi untuk cuaca (contoh: Jakarta). Ganti sesuai kotamu.
+PATCH {{base}}/me
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "latitude": -6.2,
+  "longitude": 106.8,
+  "timezone": "Asia/Jakarta"
+}
+
+
+### 4. Upload foto baju.
+###    Ganti path setelah tanda "<" dengan lokasi foto di laptopmu.
+###    Proses ini butuh sekitar 5-10 detik (hapus background + tagging).
+###    Ganti juga "image/jpeg" jadi "image/png" kalau fotonya PNG.
+# @name uploadItem
+POST {{base}}/items
+X-User-Id: {{userId}}
+Content-Type: multipart/form-data; boundary=DressaBoundary
+
+--DressaBoundary
+Content-Disposition: form-data; name="file"; filename="baju.jpg"
+Content-Type: image/jpeg
+
+< C:\Users\NathanLampoenk2\Pictures\baju.jpg
+--DressaBoundary--
+
+
+### 5. Daftar semua baju di lemari
+GET {{base}}/items
+X-User-Id: {{userId}}
+
+### 5b. Hanya atasan (pilihan lain: BOTTOM, OUTERWEAR, DRESS, FOOTWEAR, ACCESSORY)
+GET {{base}}/items?category=TOP
+X-User-Id: {{userId}}
+
+### 6. Koreksi tag baju yang terakhir di-upload (kalau tebakan model salah)
+PATCH {{base}}/items/{{uploadItem.response.body.$.item.id}}
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "itemType": "shirt",
+  "styles": ["casual"]
+}
+
+
+### 7. Rekomendasi outfit hari ini
+# @name reco
+GET {{base}}/recommendations
+X-User-Id: {{userId}}
+
+### 7b. Alternatif berikutnya (reroll)
+GET {{base}}/recommendations?reroll=1
+X-User-Id: {{userId}}
+
+### 7c. Isi tipe agenda manual (formal / casual / sport), tanpa Google Calendar
+GET {{base}}/recommendations?eventType=formal
+X-User-Id: {{userId}}
+
+### 7d. Eksperimen bobot (contoh: cuaca lebih penting, rotasi kurang penting)
+GET {{base}}/recommendations?wWeather=0.5&wRotation=0.1
+X-User-Id: {{userId}}
+
+
+### 8. Catat bahwa outfit rekomendasi pertama dari request 7 dipakai hari ini.
+###    Jalankan request 7 dulu. Kalau outfit-nya berisi 2 item, hapus baris id ketiga.
+# @name wear
+POST {{base}}/outfits
+X-User-Id: {{userId}}
+Content-Type: application/json
+
+{
+  "itemIds": [
+    "{{reco.response.body.$.outfits[0].items[0].id}}",
+    "{{reco.response.body.$.outfits[0].items[1].id}}",
+    "{{reco.response.body.$.outfits[0].items[2].id}}"
+  ],
+  "recommended": true
+}
+
+### 9. Riwayat outfit
+GET {{base}}/outfits
+X-User-Id: {{userId}}
+
+### 10. Batalkan catatan pemakaian terakhir (request 8)
+DELETE {{base}}/outfits/{{wear.response.body.$.id}}
+X-User-Id: {{userId}}
+
+
+### 11. Status Google Calendar (opsional)
+GET {{base}}/integrations/google
+X-User-Id: {{userId}}
+
+### 12. Minta link login Google, lalu buka "url" di respons pakai browser
+GET {{base}}/integrations/google/auth-url
+X-User-Id: {{userId}}
+
+
+### 13. Hapus baju yang terakhir di-upload
+DELETE {{base}}/items/{{uploadItem.response.body.$.item.id}}
+X-User-Id: {{userId}}

@@ -19,10 +19,27 @@ model User {
   createdAt    DateTime       @default(now()) @map("created_at")
   updatedAt    DateTime       @updatedAt @map("updated_at")
 
-  wardrobeItems WardrobeItem[]
-  outfitLogs    OutfitLog[]
+  wardrobeItems      WardrobeItem[]
+  outfitLogs         OutfitLog[]
+  calendarConnection CalendarConnection?
 
   @@map("users")
+}
+
+// Optional Google Calendar link (one per user). Tokens are AES-256-GCM encrypted at rest.
+model CalendarConnection {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  provider          String   @default("google")
+  refreshTokenEnc   String   @map("refresh_token_enc")
+  scope             String
+  calendarId        String   @default("primary") @map("calendar_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("calendar_connections")
 }
 
 enum ItemCategory {

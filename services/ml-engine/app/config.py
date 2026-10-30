@@ -14,10 +14,9 @@ EMBEDDING_DIM = 512
 # rembg model: isnet-general-use (default), u2net, u2netp (small/fast), birefnet-general (best, ~1 GB)
 SEGMENTATION_MODEL = os.getenv("SEGMENTATION_MODEL", "isnet-general-use")
 
-# DressaNet (trained in ml/training). If missing, tagging falls back to CLIP zero-shot.
+# ML attribute classifier (scikit-learn bundle from ml/training). If missing, tagging falls back to CLIP zero-shot.
 WEIGHTS_DIR = SERVICE_ROOT / "weights"
-ATTRIBUTE_MODEL_PATH = os.getenv("ATTRIBUTE_MODEL_PATH", str(WEIGHTS_DIR / "dressa_attr.onnx"))
-ATTRIBUTE_LABELS_PATH = os.getenv("ATTRIBUTE_LABELS_PATH", str(WEIGHTS_DIR / "dressa_attr_labels.json"))
+ML_MODEL_PATH = os.getenv("ML_MODEL_PATH", str(WEIGHTS_DIR / "dressa_ml.joblib"))
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
 MAX_IMAGE_PIXELS = 40_000_000  # ~40 MP, guards against decompression bombs

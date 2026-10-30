@@ -28,7 +28,7 @@ export interface ItemTags {
   dominant_colors: ColorTag[];
   pattern: LabelTag;
   styles: LabelTag[];
-  /** summer/fall/winter/spring; only set when DressaNet is loaded */
+  /** summer/fall/winter/spring; only set when the ML classifier is loaded */
   season?: LabelTag | null;
   warmth_level: number;
   water_resistant: boolean;
@@ -44,7 +44,7 @@ export interface ProcessImageResponse {
   cutout_height: number;
   tags: ItemTags;
   /** Model that produced item_type/style/warmth */
-  attribute_model: "dressanet" | "clip-zero-shot";
+  attribute_model: "ml-classifier" | "clip-zero-shot";
   /** How likely the cutout is a single garment (vs. people, scenes, objects), 0..1 */
   garment_probability: number;
   needs_review: boolean;

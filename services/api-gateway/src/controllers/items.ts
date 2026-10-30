@@ -3,6 +3,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { HttpError } from "../lib/errors.js";
 import { prisma } from "../lib/prisma.js";
+import { parse } from "../lib/validate.js";
 import { createItemFromPhoto, deleteItem, getOwnedItem } from "../services/items.js";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -35,15 +36,6 @@ const updateBody = z
   .partial()
   .strict()
   .refine((b) => Object.keys(b).length > 0, "Body must contain at least one field");
-
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    const issue = result.error.issues[0];
-    throw new HttpError(400, issue ? `${issue.path.join(".") || "request"}: ${issue.message}` : "Invalid request");
-  }
-  return result.data;
-}
 
 export async function createItem(req: FastifyRequest, reply: FastifyReply) {
   const file = await req.file({ limits: { fileSize: config.maxUploadBytes, files: 1 } });

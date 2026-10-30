@@ -18,7 +18,7 @@ from app.core.colors import dominant_colors
 from app.core.tagger import ZeroShotTagger
 from app.core.vector_store import VectorStore
 from app.images import decode_image, downscale, flatten_on_white, open_image, png_base64, read_upload
-from app.models.attribute_classifier import load_attribute_classifier
+from app.models.ml_classifier import load_ml_classifier
 from app.models.clip import ClipImageEmbedder
 from app.models.segmenter import BackgroundRemover
 
@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
     app.state.embedder = await run_in_threadpool(ClipImageEmbedder)
     app.state.tagger = await run_in_threadpool(ZeroShotTagger)
     app.state.segmenter = await run_in_threadpool(BackgroundRemover)
-    # DressaNet replaces CLIP for item type / style / warmth when its files are present.
-    app.state.attributes = await run_in_threadpool(load_attribute_classifier)
+    # The trained ML classifier replaces CLIP zero-shot for item type / style / warmth when present.
+    app.state.attributes = await run_in_threadpool(load_ml_classifier, app.state.embedder)
     log.info("Models loaded: %s, %s, %s; attribute model: %s", config.CLIP_MODEL, config.CLIP_TEXT_MODEL,
              config.SEGMENTATION_MODEL, _attribute_model_name())
     app.state.vectors = VectorStore()
@@ -49,11 +49,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Dressa ML Engine", version="0.3.0", lifespan=lifespan)
 
-AttributeModel = Literal["dressanet", "clip-zero-shot"]
+AttributeModel = Literal["ml-classifier", "clip-zero-shot"]
 
 
 def _attribute_model_name() -> AttributeModel:
-    return "dressanet" if getattr(app.state, "attributes", None) is not None else "clip-zero-shot"
+    return "ml-classifier" if getattr(app.state, "attributes", None) is not None else "clip-zero-shot"
 
 
 # ---------- Schemas ----------
@@ -86,8 +86,8 @@ class ItemTags(BaseModel):
     dominant_colors: list[ColorTag] = Field(description="Most dominant first")
     pattern: LabelTag = Field(description="e.g. solid, striped, plaid, floral")
     styles: list[LabelTag] = Field(description="e.g. casual, formal, sporty")
-    season: LabelTag | None = Field(default=None, description="summer/fall/winter/spring (DressaNet only)")
-    warmth_level: int = Field(ge=1, le=5, description="Derived from item_type (and season for DressaNet)")
+    season: LabelTag | None = Field(default=None, description="summer/fall/winter/spring (ML classifier only)")
+    warmth_level: int = Field(ge=1, le=5, description="Derived from item_type (and season for the ML classifier)")
     water_resistant: bool
 
 
@@ -179,7 +179,7 @@ async def process_image(
     colors = await run_in_threadpool(dominant_colors, cutout)
     vector = await run_in_threadpool(app.state.embedder.embed, flatten_on_white(cutout))
 
-    # DressaNet (own model): item type, category, style, season, warmth.
+    # Own ML classifier: item type, category, style, season, warmth.
     # CLIP is still used for the "is this a garment?" check and for pattern (no pattern labels in training data).
     attrs = None
     if app.state.attributes is not None:

@@ -13,3 +13,8 @@ rembg[cpu]>=2.0.60
 
 # Vector DB
 qdrant-client>=1.15,<2.0
+
+# Own ML attribute classifier. Pinned: the model bundle must be loaded with the exact version it was trained with.
+scikit-learn==1.9.1
+joblib>=1.4
+scipy>=1.13

@@ -1,6 +1,6 @@
 # Penjelasan Arsitektur Dressa
 
-Dokumen ini menjelaskan apa saja yang sudah dipakai di Dressa, untuk apa, dan bagaimana bagian-bagiannya saling terhubung. Penjelasan training model ada di notebook `ml/training/dressa_attribute_classifier.ipynb`.
+Dokumen ini menjelaskan apa saja yang sudah dipakai di Dressa, untuk apa, dan bagaimana bagian-bagiannya saling terhubung. Penjelasan training model ada di notebook `ml/training/dressa_ml_classifier.ipynb`.
 
 ## Gambaran besar
 
@@ -91,6 +91,6 @@ Kalau salah satu langkah di `POST /items` gagal, langkah sebelumnya dibatalkan: 
 |---|---|---|
 | Hapus background | IS-Net pretrained | Tetap pretrained |
 | Embedding (untuk kecocokan antar pakaian) | CLIP pretrained | Tetap untuk sementara |
-| Tipe pakaian, style, musim | CLIP zero-shot | **Diganti CNN yang kamu latih dari nol** |
+| Tipe pakaian, style, musim | CLIP zero-shot (fallback) | **Model ML buatanmu** (scikit-learn) pada fitur numerik: embedding pretrained yang dibekukan + 38 fitur warna/bentuk/tekstur (`app/core/features.py`) |
 | Pola (polos, garis, dst.) | CLIP zero-shot | Tetap, karena datasetnya tidak punya label pola |
 | Warna dominan | k-means, kode sendiri | Tetap |
